@@ -137,10 +137,9 @@
 				oSelf._loadedGroup[option.file] = true;
 				if(!iCat.$ && (root['jQuery'] || root['Zepto'])){
 					iCat.$ = root['jQuery'] || root['Zepto'];
+					iCat.embedjQuery();
 				}
 			};
-			pNode.appendChild(node);
-			pNode.removeChild(node);
 		},
 
 		getURL: function(arr, isSingle){//isSingle表示强制单个加载
@@ -247,9 +246,9 @@
 						}
 					},5);
 					oSelf._loadedGroup[option.file] = true;
-					pNode.appendChild(node);
-					pNode.removeChild(node);
 				}
+
+				pNode.appendChild(node);
 			});
 		},
 
@@ -280,26 +279,17 @@
 				if(opt.files.length){
 					if(opt.isDepend)//文件间有依赖 顺序加载
 						oSelf.unblockLoad({
-							file: curJS,
-							callback: function(){
-								fn(opt.files);//next
-							},
-							context: opt.context,
-							modName: opt.modName
+							file:curJS, modName:opt.modName,
+							callback:function(){fn(opt.files);/*next*/}, context:opt.context
 						});
 					else {
-						oSelf.unblockLoad({
-							file: curJS,
-							context: opt.context
-						});
-						fn(opt.files);//next
+						oSelf.unblockLoad({file:curJS, context:opt.context});
+						fn(opt.files);/*next*/
 					}
 				} else {
 					oSelf.unblockLoad({
-						file: curJS,
-						callback: opt.callback,
-						context: opt.context,
-						modName: opt.modName
+						file:curJS, modName:opt.modName,
+						callback:opt.callback, context:opt.context
 					});
 				}
 			})();
@@ -380,7 +370,7 @@
 		require: function(){//加载有依赖的模块
 			if(!arguments.length) return;
 			arguments.length==1?
-				loader.fnOption(arguments[0]) :
+				loader.fnOption(arguments[0], true) :
 				loader.fnRequire(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]);
 		},
 		
@@ -400,22 +390,20 @@
 	});
 
 	//默认模块
-	iCat.ModsConfig([
-		{
-			modName: 'zeptoCore',
-			paths: ['lib/zepto/src/zepto.js', 'lib/zepto/src/event.js', 'lib/zepto/src/ajax.js', 'lib/zepto/src/fx.js']
-		},{
-			modName: 'appMVC',
-			paths: ['./mvc/view.js', './mvc/model.js', './mvc/controller.js']
-		}
-	]);
+	iCat.ModsConfig({
+		'zeptoAjax': ['lib/zepto/src/zepto.js', 'lib/zepto/src/ajax.js'],
+		'zeptoAnim': ['lib/zepto/src/zepto.js', 'lib/zepto/src/fx.js', 'lib/zepto/src/fx_methods.js'],
+		'zAjaxAnim': ['lib/zepto/src/zepto.js', 'lib/zepto/src/ajax.js', 'lib/zepto/src/fx.js', 'lib/zepto/src/fx_methods.js'],
+		'appMVC': ['./mvc/view.js', './mvc/model.js', './mvc/controller.js']
+	});
 
 	iCat.weinreStart = function(){
 		if(!iCat.PathConfig.weinreRef) return;
 
-		var whash = iCat.util.cookie('__w_hash') || '';
-		if(location.hash && !whash){
-			iCat.util.cookie('__w_hash', location.hash, 3600);
+		var whash = iCat.util.cookie('__w_hash') || '#anonymous',
+			curHash = location.hash;
+		if(curHash && /^#[^\W]+$/.test(curHash) && !whash){//忽略单页面中的hash
+			iCat.util.cookie('__w_hash', curHash, 3600);
 		}
 		var weinrejs = iCat.PathConfig.weinreRef + 'target/target-script-min.js!' + whash;
 		iCat.include(weinrejs);// fixed bug:用inc当js无法加载时，会阻碍页面渲染

@@ -1,20 +1,19 @@
 (function(iCat){
 	function switchPage(p1, p2){
-		p1 && $(p1).hide();
-		$(p2).show();
-		/*if(p1){
+		/*p1 && $(p1).hide();
+		$(p2).show();*/
+		if(p1){
 			$(p2).hide();
 			$(p1).fadeOut(500, function(){
-				$(p2).slideDown(500);
+				$(p2).fadeIn(500);
 			});
-		}*/
+		}
 	}
 
 	//view
 	var View = iCat.View.extend({
 		config: {
 			wrap: '',
-			repeatOverwrite: true,
 			ajaxUrl:'data/album.php',
 			globalKey:'pageData'
 		}
@@ -51,8 +50,7 @@
 	//controller
 	var mainCtrl = iCat.Controller.extend({
 		config: {
-			baseBed: '#main .jstest',
-			adjustLayout: {'#main':'div.jstest*3'}
+			baseBed: '#main .jstest'
 		},
 
 		routes: {
@@ -92,5 +90,5 @@
 	});
 
 	//start
-	iCat.ctrlAble(new mainCtrl('mc'));
+	new mainCtrl('mc');
 })(ICAT);

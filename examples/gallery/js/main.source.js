@@ -6,7 +6,7 @@
 		}
 	});
 
-	iCat.include('lib/jquery/jquery.js', function(){
+	iCat.use('zAjaxAnim', function(){
 		iCat.include('./mvc.source.js');
 	});
 })(ICAT);

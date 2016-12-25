@@ -29,6 +29,24 @@
 
 	// jQuery/Zepto coming in
 	iCat.$ = root['jQuery'] || root['Zepto'];
+	iCat.embedjQuery = function(){
+		var $ = iCat.$,
+			hasiCatEvent = !!iCat.Event;
+		if(!$) return;
+
+		if(!($.Event || $.event)){
+			$.Event = function(a){ return a; };
+			$.fn.bind = $.fn.on = function(type, callback){
+				if(hasiCatEvent) iCat.Event.on(this, type, callback);
+			};
+			$.fn.unbind = $.fn.off = function(type){
+				if(hasiCatEvent) iCat.Event.off(this, type);
+			};
+			$.fn.trigger = function(type, data){//data目前还没有妥善处理方式
+				if(iCat.Event) iCat.Event.trigger(this, type);
+			};
+		}
+	};
 
 	// expand the built-in Objects' functions.
 	var ArrPro = Array.prototype;
@@ -60,7 +78,7 @@
 	iCat.isNull = function(obj){ return obj===null; };
 	iCat.isNumber = function(obj){ return !/\D/.test(obj); };
 	iCat.isUndefined = function(obj){ return obj===undefined; };
-	iCat.isjQueryObject = function(obj){ return !!iCat.$ && obj instanceof iCat.$; };
+	iCat.isjQueryObject = function(obj){ return !!iCat.$ && (!!obj) && iCat.isFunction(obj.get);/*obj instanceof iCat.$*/ };
 	iCat.isEmptyObject = function(obj){ for(var name in obj){return false;} return true; };
 
 	// Kinds of modes
@@ -146,6 +164,12 @@
 				return p in o;
 			}
 			return false;
+		},
+
+		toArray: function(oArr){
+			var arr = [];
+			iCat.foreach(oArr, function(i,v){ arr.push(v); });
+			return arr;
 		},
 		
 		// Handles objects with the built-in 'foreach', arrays, and raw objects.
@@ -344,9 +368,8 @@
 			(fn = function(){
 				callback(key, steps);
 				if(steps<delay && cacheTimer[key]===false){
-					var timer = setTimeout(function(){
+					setTimeout(function(){
 						steps = steps + step;
-						clearTimeout(timer);
 						fn();
 					}, step);
 				}
@@ -410,8 +433,9 @@
 		},
 
 		scroll: Sutil.scroll || function(box, callback){
-			var me = iCat.isString(box)? iCat.util.queryOne(box) : box,
+			var me = iCat.isString(box)? iCat.util.queryOne(box, iCat.elCurWrap) : box,
 				o, nodes, isBody;
+			if(!me) return;
 
 			me = me.nodeType!==1? doc.body : me;
 			nodes = me.children;
@@ -424,13 +448,16 @@
 				o = nodes[0];
 			}
 
-			(isBody? doc : me).addEventListener('scroll', function(){
-				var boxHeight = iCat.util.outerHeight(isBody? root : me),
-					boxScrollTop = me!==doc.body? me.scrollTop :
-						doc.body.scrollTop || (doc.documentElement && doc.documentElement.scrollTop),
-					pannelHeight = iCat.util.outerHeight(o);
-				callback(boxHeight, boxScrollTop, pannelHeight);
-			}, false);
+			if(!me.bindScroll){
+				(isBody? doc : me).addEventListener('scroll', function(){
+					var boxHeight = iCat.util.outerHeight(isBody? root : me),
+						boxScrollTop = me!==doc.body? me.scrollTop :
+							doc.body.scrollTop || (doc.documentElement && doc.documentElement.scrollTop),
+						panelHeight = iCat.util.outerHeight(o);
+					callback(boxHeight, boxScrollTop, panelHeight);
+				}, false);
+				me.bindScroll = true;
+			}
 		}
 	});
 
@@ -458,11 +485,12 @@
 		queryAll: Sutil.queryAll || function(selector, context){
 			if(!selector) return [];
 			return iCat.isString(selector)?
-					(context || iCat.elCurWrap || iCat.elBodyWrap || doc).querySelectorAll(selector) : selector;
+					(context || iCat.elBodyWrap || doc).querySelectorAll(selector) : selector;
 		},
 
 		queryOne: Sutil.queryOne || function(selector, context){
-			if(!selector) return;
+			if(iCat.isUndefined(selector)) return;
+			if(selector==='') return iCat.elCurWrap;
 			if(iCat.isString(selector)){
 				selector = /\:[\d]+/.test(selector)?
 					selector.replace(/(\:[\d]+).*/g, '$1').split(':') : [selector];
@@ -608,16 +636,16 @@
 							'module:3': 'span.aaa.bbb.ccc*9'
 						}
 					 */
-					makeHtml: function(items, pNode, clear){
+					makeHtml: function(items, pNode, clear, mustAppend){
 						if(!items) return;
 
 						if(iCat.isObject(items)){
 							iCat.foreach(items, function(k, item){
-								oSelf._makeHtml(item, iCat.util.queryOne(k.trim()), clear);
+								oSelf._makeHtml(item, iCat.util.queryOne(k.trim()), clear, mustAppend);
 							});
 						}
 						else if(iCat.isString(items)){
-							oSelf._makeHtml(items, pNode, clear);
+							oSelf._makeHtml(items, iCat.util.queryOne(pNode), clear, mustAppend);
 						}
 					},
 
@@ -634,6 +662,13 @@
 							p.insertBefore(nodes[0], el);
 						}
 						p.removeChild(el);
+					},
+
+					clearHtml: function(pNode){
+						var nodes = pNode.childNodes;
+						while(nodes.length){
+							pNode.removeChild(nodes[0]);
+						}
 					}
 				};
 			},
@@ -744,14 +779,13 @@
 				}
 			},
 
-			_makeHtml: function(items, pNode, clear){
-				if(!items || !iCat.isString(items)) return;
-
+			_makeHtml: function(items, pNode, clear, mustAppend){
 				var p = pNode, o, shtml;
 				if(!p) return;
 
-				if(clear) p.innerHTML = '';
-				if(!p.childNodes.length){//拒绝重复
+				if(clear)
+					iCat.util.clearHtml(p);
+				if(!p.childNodes.length || mustAppend){//拒绝重复
 					shtml = iCat.util.zenCoding(items);
 					o = doc.createElement('wrap');
 					o.innerHTML = shtml || '';
@@ -776,14 +810,13 @@
 				return {
 					/*
 					 * cfg = {
-					 *     scrollWrap/wrap: 父层，没有设置则返回html
+					 *     wrap: 父层，没有设置则返回html
 					 *     tempId: 模板ID（规则同_fnTmpl）
 					 *     hooks: js-hooks，也可以设置伪属性
+					 *     multiChild: 父层可非空渲染
+					 *     callback: 渲染完成后执行回调函数
 					 *     delayTime: 惰性加载img，推迟时间点
 					 *     blankPic: 占位图片选择器
-					 *     callback: 渲染完成后执行回调函数
-					 *     onlyChild: 当单页面模式且此值为true时，会先清空再渲染(同clear效果)
-					 *     overwrite: 父层有子元素时是否覆盖
 					 *     loadCallback: (内部使用)当页面模块化加载时，此为控制函数
 					 * }
 					 *
@@ -792,16 +825,11 @@
 					 */
 					render: function(cfg, data, before, clear){
 						if(cfg && data){
-							var w = cfg.scrollWrap || cfg.wrap,
-								pWrap = iCat.util.queryOne(w);
+							var pWrap = iCat.util.queryOne(cfg.wrap, iCat.elCurWrap);
 							iCat.isjQueryObject(pWrap) && (pWrap = pWrap[0]);
 
-							//兼容old-api
-							cfg.overwrite = cfg.repeatOverwrite!==undefined? cfg.repeatOverwrite : cfg.overwrite;
-							cfg.onlyChild = cfg.oneChild!==undefined? cfg.oneChild : cfg.onlyChild;
-
 							var	o = doc.createElement('wrap'),
-								uncla = (cfg.viewId || cfg.tempId) + '-loaded',
+								uncla = (cfg.viewId || (iCat.isString(cfg.tempId)? cfg.tempId:'wrap')) + '-loaded',
 								oldNodes = iCat.util.queryAll('*[data-unclass='+uncla+']', pWrap),
 								isFirst = !oldNodes.length,
 								curNode, html = '';
@@ -839,12 +867,8 @@
 						if(!pWrap) return html;
 						
 						//辞旧
-						if(cfg.onlyChild===undefined) cfg.onlyChild = true;
-						if(clear || (iCat.singleMode && cfg.onlyChild)){
-							var nodes = pWrap.childNodes;
-							while(nodes.length){
-								pWrap.removeChild(nodes[0]);
-							}
+						if(clear || !cfg.multiChild){
+							iCat.util.clearHtml(pWrap);
 						}
 
 						//迎新
@@ -858,11 +882,9 @@
 							} else {
 								pWrap.insertBefore(o, oldNodes[0]);
 								for(var i=oldNodes.length-1; i>=0; i--){
-									if(cfg.overwrite || !before){
+									if(!before){
 										pWrap.removeChild(oldNodes[i]);
-										if(!cfg.overwrite){
-											o.insertBefore(oldNodes[i], o.firstChild);
-										}
+										o.insertBefore(oldNodes[i], o.firstChild);
 									}
 								}
 							}
@@ -907,16 +929,17 @@
 					 *      dataKey: 可选，与viewId一起组成keyStorage，没有则只有viewId成为keyStorage
 					 *      ajaxUrl: ajax请求地址
 					 *      globalKey: 单页面时，全局数据的key
-					 *      overwrite: 是否覆盖
+					 *      overwrite: 数据重复时是否覆盖，不覆盖则转为repeatData
 					 * }
 					 */
 					fetch: function(cfg, callback){
 						if(!cfg) return;
 
 						var keyStorage,
-							IMData = cfg.viewId? iCat.Model.__pageData[cfg.viewId] : {},
+							IMData = cfg.viewId? iCat.Model.ViewData(cfg.viewId) : {},
 							ownData = IMData.ownData,
-							online = navigator.onLine==true;
+							online = navigator.onLine==true,
+							hasGData = !!cfg.globalKey && !!iCat.Model.GlobalData(cfg.globalKey);
 
 						//兼容old-api
 						cfg.dataSave = cfg.isSave!==undefined? cfg.isSave : cfg.dataSave;
@@ -928,11 +951,11 @@
 							keyStorage = (cfg.viewId || cfg.tempId) + cfg.dataKey;
 						}
 
-						if(online && cfg.ajaxUrl){
+						if(online && cfg.ajaxUrl && !hasGData){
 							oSelf._ajaxFetch(cfg, callback, ownData, keyStorage);
 						}
 						else {
-							!!cfg.globalKey?
+							hasGData?
 								oSelf._globalFetch(cfg, callback, ownData) :
 								oSelf._storageFetch(cfg, callback, ownData, keyStorage);
 						}
@@ -1162,7 +1185,7 @@
 
 					iCat.mix(gData, ownData);
 					if(callback) callback(gData);
-				}, undefined, 10);
+				}, 1000, 10);
 			},
 
 			_storageFetch: function(cfg, callback, ownData, keyStorage){
@@ -1181,6 +1204,15 @@
 						data = { repeatData: arr };
 					} else {
 						data = JSON.parse(data);
+					}
+				}
+
+				if(cfg.globalKey){
+					if(iCat.isEmptyObject(data)){
+						this._globalFetch(cfg, callback, ownData);
+						return;
+					} else {
+						iCat.Model.GlobalData(cfg.globalKey, data);
 					}
 				}
 
@@ -1214,9 +1246,12 @@
 				
 				repeatKeys = repeatKeys? JSON.parse(repeatKeys) : {};
 				_key = key.replace(/repeat_\d+.*/gi, '');
-				if(repeatKeys[_key]===undefined || overwrite){//第一次或可以覆盖
+				if(iCat.isUndefined(repeatKeys[_key])//第一次
+					|| (repeatKeys[_key]===false && iCat.isNull(iCat.util.storage(key)))//已被删除
+						|| overwrite)//可以覆盖
+				{
 					iCat.util.storage(key, data);
-					if(repeatKeys[_key]===undefined){
+					if(iCat.isUndefined(repeatKeys[_key])){
 						repeatKeys[_key] = false;
 						iCat.util.storage('repeatKeys', repeatKeys);
 					}

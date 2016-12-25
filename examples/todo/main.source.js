@@ -5,8 +5,7 @@
 			version: '0.0.1'
 		};
 	});
-
-	//iCat.include('lib/jquery/jquery.js', function(){
-		iCat.include('./todos.source.js');
-	//});
+	
+	//lib/jquery/jquery.js
+	iCat.include(['lib/zepto/src/zepto.js', './todos.source.js'], null, true);
 })(ICAT);

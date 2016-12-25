@@ -6,11 +6,7 @@
 			wrap: '#backbone-menu',
 			ajaxUrl: 'Backboneapp_data.php',
 			globalKey:'pageData',
-			repeatOverwrite: true,
-			callback: function(p, cfg){
-				$('.active').removeClass('active');
-				$('#item' + cfg.curId).addClass('active');
-			}
+			dataSave: true
 		}
 	});
 
@@ -18,8 +14,11 @@
 		config: {
 			tempId: 'content-tmpl',
 			wrap: '#backbone-content',
-			repeatOverwrite: true,
-			globalKey:'pageData'
+			globalKey:'pageData',
+			callback: function(p, cfg, data){
+				$('.active').removeClass('active');
+				$('#item' + data.position).addClass('active');
+			}
 		}
 	});
 
@@ -40,6 +39,7 @@
 
 	//ctrl
 	var pageCtrl = iCat.Controller.extend({
+		config: {baseBed: '#content'},
 		routes: {
 			' ': 'defaultRoute',
 			'info/:id': 'infoShow'
@@ -55,10 +55,9 @@
 
 			c.init({
 				vmGroups: [
-					{view: new menuView('menu', {config:{curId:itemId}}), model: pageModel},
+					{view: new menuView('menu'), model: pageModel},
 					{view: new mainView('main', {config:{globalArgus:[itemId]}}), model: pageModel}
-				],
-				baseBed: '#content'
+				]
 			});
 		}
 	});

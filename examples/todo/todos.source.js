@@ -6,6 +6,7 @@
 				wrap: '#todo-list',
 				isSave: true,
 				overwrite: false,
+				multiChild: true,
 				events: [
 					{selector:'#new-todo', type:'keypress', callback:'createOnEnter'},
 					{selector:'.edit', type:'keypress', callback:'updateOnEnter'},
@@ -179,17 +180,17 @@
 
 	var appCtrl = iCat.Controller.extend(
 	{
+		config: {baseBed: '#todoapp'},
 		routes: {'todo': 'todoInit'},
 		todoInit: function(){
 			var c = this;
 			c.init({
-				view:new mainView('mView'), model:mainModel,
-				baseBed: '#todoapp'
+				view:new mainView('mView'), model:mainModel
 			});
 
 			c.vmAdd({view:new appView('aView'), model:mainModel});
 		}
 	});
 
-	iCat.ctrlAble(new appCtrl('mCtrl'));
+	new appCtrl('mCtrl');
 })(ICAT);

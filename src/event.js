@@ -88,35 +88,21 @@
 		bind: function(el, type, handler){
 			if(!el) return;
 			el = iCat.util.queryAll(el);
-			if(iCat.isjQueryObject(el)){//兼容jquery
-				el.bind? el.bind(type, handler) :
-					iCat.foreach(el, function(i,v){
-						Event._bindEvent(v.get(0), type, handler);
-					});
-			} else {
-				el.length===undefined ?
-					Event._bindEvent(el, type, handler) :
-					iCat.foreach(el, function(i,v){
-						Event._bindEvent(v, type, handler);
-					});
-			}
+			el.length===undefined ?
+				Event._bindEvent(el, type, handler) :
+				iCat.foreach(el, function(i,v){
+					Event._bindEvent(v, type, handler);
+				});
 		},
 
 		unbind: function(el, type){
 			if(!el) return;
 			el = iCat.util.queryAll(el);
-			if(iCat.isjQueryObject(el)){//兼容jquery
-				el.unbind? el.unbind(type) :
-					iCat.foreach(el, function(i,v){
-						Event._unbindEvent(v.get(0), type);
-					});
-			} else {
-				el.length===undefined ?
-					Event._unbindEvent(el, type) :
-					iCat.foreach(el, function(i,v){
-						Event._unbindEvent(v, type);
-					});
-			}
+			el.length===undefined ?
+				Event._unbindEvent(el, type) :
+				iCat.foreach(el, function(i,v){
+					Event._unbindEvent(v, type);
+				});
 		},
 
 		trigger: function(el, type, bubbles, cancelable){
@@ -126,10 +112,7 @@
 			}
 
 			if(iCat.isjQueryObject(el)) {// jquery对象
-				if(el.trigger){
-					el.trigger(type); return;
-				} else
-					el = el.get(0);
+				el = el.get(0);
 			}
 
 			if(/^@\w+/i.test(type)){// 事件代理
@@ -139,36 +122,35 @@
 			}
 			else { // 普通元素
 				var ev = doc.createEvent('Event');
-				ev.initEvent(type, bubbles, cancelable);
+				ev.initEvent(type.replace(/\.\w+/g, ''), bubbles, cancelable);
 				el.dispatchEvent(ev);
 			}
 		},
 
-		ready: function(){
-			var _fn = [],
-				_do = function(){
-					if(!arguments.callee.done){
-						arguments.callee.done = true;
-						for(var i=0; i<_fn.length; i++){
-							_fn[i]();
-						}
+		ready: function(f){
+			var domReady = Event.ready,
+				_ready = function(){
+					if(domReady.done) return false;
+					if(doc && doc.getElementsByTagName && doc.getElementById && doc.body){
+						clearInterval(domReady.timer);
+						domReady.timer = null;
+
+						domReady.arrFuns.forEach(function(fn){ fn(); });
+						domReady.arrFuns = null;
+						domReady.done = true;
 					}
 				};
 
-			if(doc.readyState){
-				(function(){
-					doc.readyState!=='loading'?
-						_do() : setTimeout(arguments.callee, 10);
-				})();
+			if(domReady.done) return f();
+			if(domReady.timer){
+				domReady.arrFuns.push(f);
+			} else {
+				Event.on(root, 'load', _ready);
 			}
 
-			return function(fn){
-				if(iCat.isFunction(fn)){
-					_fn[_fn.length] = fn;
-				}
-				return fn;
-			};
-		}(),
+			domReady.arrFuns = [f];
+			domReady.timer = setInterval(_ready, 15);
+		},
 
 		//存放代理元素的选择器
 		__event_selectors: [],
@@ -296,6 +278,8 @@
 	if(iCat.Shim.Event){//keep Compatible
 		iCat.mix(Event, iCat.Shim.Event);
 	}
+
+	iCat.embedjQuery();// for jQuery/Zepto
 	
 	Event.ready(function(){
 		var touch = {}, touchTimeout,
