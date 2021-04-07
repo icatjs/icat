@@ -2,22 +2,22 @@
   "name": "icat",
   "description": "It's Concise,Agile,Thin...",
   "version": "0.1.0",
-  "homepage": "https://github.com/valleykid/icat",
+  "homepage": "https://github.com/icatjs/icat",
   "author": {
     "name": "valleykid",
     "email": "valleykiddy@gmail.com"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/valleykid/icat.git"
+    "url": "git://github.com/icatjs/icat.git"
   },
   "bugs": {
-    "url": "https://github.com/valleykid/icat/issues"
+    "url": "https://github.com/icatjs/icat/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/valleykid/icat/blob/master/LICENSE-MIT"
+      "url": "https://github.com/icatjs/icat/blob/master/LICENSE-MIT"
     }
   ],
   "main": "lib/icat",

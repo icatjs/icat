@@ -1,6 +1,6 @@
 /*!
  * Copyright 2011~2013, ICAT JavaScript Library v1.1.5
- * https://github.com/valleykid/icat
+ * https://github.com/icatjs/icat
  *
  * Copyright (c) 2013 valleykid
  * Licensed under the MIT license.
